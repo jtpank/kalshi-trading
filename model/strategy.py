@@ -1,4 +1,5 @@
 from loguru import logger as log
+from abc import ABC, abstractmethod
 from utils.utils import TraderState, MarketOrder, MarketState, StrategyConfig
 from typing import Optional
 from datetime import datetime, UTC
@@ -13,6 +14,24 @@ def to_float(value) -> Optional[float]:
     if value is None:
         return None
     return float(value)
+
+class BaseStrategy(ABC):
+    def __init__(self, config: StrategyConfig, trader: Trader) -> None:
+        self.config = config
+        self.trader = trader
+        self.closing_ask = 0
+        self.initial_closing_ask = 0
+        self.hit_initial_take_profit = False
+    
+    @abstractmethod
+    def should_enter(self, st: TraderState, market_st: MarketState) -> bool:
+        pass
+
+    @abstractmethod
+    def should_exit(self, st: TraderState, market_st: MarketState) -> bool:
+        pass
+
+    
 
 class StrategyRunner:
     def __init__(self, config: StrategyConfig, trader: Trader) -> None:

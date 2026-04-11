@@ -52,14 +52,14 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     if df.empty:
         print(f"Skipping {csv_path.name}: no valid OHLC rows found.")
         return
-
+    volume_max = df["volume_contracts"].max()
     fig = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.04,
         row_heights=[0.75, 0.25],
-        subplot_titles=("YES Price Candles", "Number of Trades"),
+        subplot_titles=("YES Price Candles", "Volume Contracts"),
     )
 
     fig.add_trace(
@@ -88,9 +88,9 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     fig.add_trace(
         go.Bar(
             x=df["time"],
-            y=df["num_trades"],
-            name="Num Trades",
-            hovertemplate="Time: %{x}<br>Num Trades: %{y}<extra></extra>",
+            y=df["volume_contracts"],
+            name="Volume Contracts",
+            hovertemplate="Time: %{x}<br>Volume Contracts: %{y:.2f}<extra></extra>",
         ),
         row=2,
         col=1,
@@ -105,7 +105,12 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     )
 
     fig.update_yaxes(title_text="YES Price", row=1, col=1)
-    fig.update_yaxes(title_text="Num Trades", row=2, col=1)
+    fig.update_yaxes(
+        title_text="Volume Contracts",
+        range=[0, volume_max * 1.05 if pd.notna(volume_max) and volume_max > 0 else 1],
+        row=2,
+        col=1,
+    )
     fig.update_xaxes(title_text="Time", row=2, col=1)
 
     output_path = output_dir / f"{csv_path.stem}.html"
@@ -114,14 +119,13 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
 
 
 def main() -> None:
-    tickers = load_tickers("tickers.txt")
+    # tickers = load_tickers("tickers.txt")
 
-    input_dir = Path("output_data")
-    output_dir = input_dir / "output_charts_html"
+    input_dir = Path("output_data/pregame_favorites")
+    output_dir = Path("output_data/output_charts_html")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for ticker in tickers:
-        csv_path = input_dir / f"{ticker}_live_1s_ohlc.csv"
+    for csv_path in input_dir.glob("*.csv"):
 
         if not csv_path.exists():
             print(f"Missing file, skipping: {csv_path}")
