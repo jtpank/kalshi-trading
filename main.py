@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from cryptography.hazmat.primitives import serialization
 from KalshiClients.KalshiClients import KalshiHttpClient, KalshiWebSocketClient
 from datetime import datetime
-from model.strategy import StrategyRunner, StrategyConfig
+from model.strategy import StrategyRunner, StrategyConfig, SmaCrossoverStrategy
 from pathlib import Path
 import pandas as pd
 
@@ -108,16 +108,8 @@ def run_simulated():
                                      max_entries=10,
                                      min_entry_ask=0.25, # if it falls to 0.x * inital opening price, stop trading 
                                      balance_fraction=0.05)
-
-    # strategy_config = StrategyConfig(simulated=is_simulated,
-    #                                  entry_ratio=0.15,
-    #                                  stop_loss_ratio=0.2, 
-    #                                  exit_ratio=0.2,
-    #                                  secondary_exit_ratio=0.50, #favorites tune this to lower we had 0.3 
-    #                                  max_entries=10,
-    #                                  min_entry_ask=0.15, # if it falls to 0.3 of inital opening price, stop trading 
-    #                                  balance_fraction=0.05)
-    strategy_runner = StrategyRunner(config=strategy_config, trader=trader)
+    
+    strategy_runner = SmaCrossoverStrategy(config=strategy_config, trader=trader)
 
     ## Pseudocode
     # for ticker in tickers:
@@ -137,9 +129,9 @@ def run_simulated():
         trader.reset_for_consecutive()
         for tick in history:
             market_state = load_market_state(tick)
-            if first_tick:
-                first_tick = False
-                strategy_runner.set_closing_ask(market_state.closing_ask)
+            # if first_tick:
+            #     first_tick = False
+            #     strategy_runner.set_closing_ask(market_state.closing_ask)
             strategy_runner.update(market_state)
 
 

@@ -52,14 +52,28 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     if df.empty:
         print(f"Skipping {csv_path.name}: no valid OHLC rows found.")
         return
-    volume_max = df["volume_contracts"].max()
+
+    df["close_sma_30"] = df["close_yes_price_dollars"].rolling(30, min_periods=1).mean()
+    df["close_sma_60"] = df["close_yes_price_dollars"].rolling(60, min_periods=1).mean()
+    df["volume_sum_30"] = df["volume_contracts"].rolling(30, min_periods=1).sum()
+
+    # crossover detection
+    sma_diff = df["close_sma_30"] - df["close_sma_60"]
+    crossover_mask = (sma_diff * sma_diff.shift(1) < 0).fillna(False)
+    crossover_df = df.loc[crossover_mask].copy()
+
+    volume_display_max = max(
+        df["volume_contracts"].max(),
+        df["volume_sum_30"].max(),
+    )
+
     fig = make_subplots(
         rows=2,
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.04,
         row_heights=[0.75, 0.25],
-        subplot_titles=("YES Price Candles", "Volume Contracts"),
+        subplot_titles=("YES Price Candles + 30s SMA + 60s SMA", "Volume Contracts + 30s Sum"),
     )
 
     fig.add_trace(
@@ -86,11 +100,70 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     )
 
     fig.add_trace(
+        go.Scatter(
+            x=df["time"],
+            y=df["close_sma_30"],
+            mode="lines",
+            name="Close SMA 30",
+            line=dict(color="orange", width=2),
+            hovertemplate="Time: %{x}<br>Close SMA 30: %{y:.4f}<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["time"],
+            y=df["close_sma_60"],
+            mode="lines",
+            name="Close SMA 60",
+            line=dict(color="blue", width=2),
+            hovertemplate="Time: %{x}<br>Close SMA 60: %{y:.4f}<extra></extra>",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=crossover_df["time"],
+            y=crossover_df["close_yes_price_dollars"],
+            mode="markers",
+            name="SMA Crossover",
+            marker=dict(
+                symbol="x",
+                color="purple",
+                size=5,
+                line=dict(color="purple", width=2),
+            ),
+            hovertemplate=(
+                "Time: %{x}<br>"
+                "Crossover Price: %{y:.4f}<extra></extra>"
+            ),
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
         go.Bar(
             x=df["time"],
             y=df["volume_contracts"],
             name="Volume Contracts",
             hovertemplate="Time: %{x}<br>Volume Contracts: %{y:.2f}<extra></extra>",
+        ),
+        row=2,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["time"],
+            y=df["volume_sum_30"],
+            mode="lines",
+            name="Volume Sum 30",
+            hovertemplate="Time: %{x}<br>Volume Sum 30: %{y:.2f}<extra></extra>",
         ),
         row=2,
         col=1,
@@ -107,7 +180,7 @@ def build_chart(csv_path: Path, output_dir: Path) -> None:
     fig.update_yaxes(title_text="YES Price", row=1, col=1)
     fig.update_yaxes(
         title_text="Volume Contracts",
-        range=[0, volume_max * 1.05 if pd.notna(volume_max) and volume_max > 0 else 1],
+        range=[0, volume_display_max * 1.05 if pd.notna(volume_display_max) and volume_display_max > 0 else 1],
         row=2,
         col=1,
     )
@@ -126,7 +199,6 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for csv_path in input_dir.glob("*.csv"):
-
         if not csv_path.exists():
             print(f"Missing file, skipping: {csv_path}")
             continue
