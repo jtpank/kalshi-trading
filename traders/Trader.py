@@ -3,6 +3,7 @@ import uuid
 from utils.utils import MarketOrder, TraderState, KalshiPortfolioResponse
 from KalshiClients.KalshiClients import KalshiHttpClient
 import math
+import asyncio
 
 class Trader:
     def __init__(self,
@@ -14,6 +15,7 @@ class Trader:
         self.simulated = simulated
         self.http_client = http_client
         self.trader_state = trader_state
+        self._lock = asyncio.Lock()
         log.info("Trader constructed with fields:")
         log.info(f"Portfolio: {self.portfolio}")
         log.info(f"Simulated Flag: {self.simulated}")
@@ -21,7 +23,6 @@ class Trader:
     def reset_for_consecutive(self) -> None:
         if self.trader_state.in_position:
             log.error("How is trader in position??")
-        self.trader_state.entries_done = 0
 
     def get_portfolio(self) -> KalshiPortfolioResponse:
         return self.portfolio

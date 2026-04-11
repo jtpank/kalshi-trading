@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from cryptography.hazmat.primitives import serialization
 from KalshiClients.KalshiClients import KalshiHttpClient, KalshiWebSocketClient
 from datetime import datetime
-from model.strategy import StrategyRunner, StrategyConfig, SmaCrossoverStrategy
+from model.strategy import StrategyConfig, SmaCrossoverStrategy
 from pathlib import Path
 import pandas as pd
 
@@ -105,7 +105,7 @@ def run_simulated():
                                      stop_loss_ratio=0.2, 
                                      exit_ratio=0.15,
                                      secondary_exit_ratio=0.30,
-                                     max_entries=10,
+                                     max_entries=100,
                                      min_entry_ask=0.25, # if it falls to 0.x * inital opening price, stop trading 
                                      balance_fraction=0.05)
     
@@ -137,7 +137,7 @@ def run_simulated():
 
     
 
-def setup_trader(env: KalshiEnvironment, ticker: str) -> Trader | None:
+def setup_trader(env: KalshiEnvironment) -> Trader | None:
     load_dotenv()
     KEYID = os.getenv("PROD_KEYID")
     KEYFILE = os.getenv("PROD_KEYFILE")
@@ -158,42 +158,27 @@ def setup_trader(env: KalshiEnvironment, ticker: str) -> Trader | None:
     try:
         limits = http_client.get_account_limits()
         log.info("Retrieved Kalshi User Account Limits.")
+        log.info(f"Limits: \n{limits}")
     except Exception as e:
         log.error(f"Could not get account limits: {e}")
         return
 
-    # try:
-    #         #TODO hardcoding these for now...
-    #         favored_side = "yes"
-    #         user_closing_ask = 0.5
-    #         market = http_client.get(f"{http_client.markets_url}/{ticker}")["market"]
-    #         state = MarketState(
-    #             ticker=ticker,
-    #             favored_side=favored_side,
-    #             open_ts=iso_to_ts(market["open_time"]),
-    #             close_ts=iso_to_ts(market["close_time"]),
-    #         )
-    #         px = http_client.get_market_prices(ticker)
-    #         state.closing_ask = user_closing_ask
-    #         state.live_ask = state.closing_ask
-    #         last_price = px.get("last_price")
-    #         state.last_price = float(last_price) if last_price is not None else None
-    # except Exception as e:
-    #     log.error(f"Could not get account limits: {e}")
-
     kalshi_portfolio = KalshiPortfolioResponse.from_dict(bal_resp_dict)
 
-    return Trader(portfolio=kalshi_portfolio, simulated=False, http_client=http_client)
+    trader_state = TraderState(entry_price=0, contract_count=0, entries_done=0, in_position=False, done=False)
+    return Trader(portfolio=kalshi_portfolio, trader_state=trader_state, simulated=False, http_client=http_client)
 
 def run_live():
     env = KalshiEnvironment.PROD
-    trader = setup_trader(env, ticker="KXNBAGAME-26APR09LALGSW-GSW")
+    trader = setup_trader(env)
+    assert trader is not None
+    log.info("Trader configured.")
 
 def main():
     config_file = "config.json"
     log.info(f"Executing main with configuration: {config_file}")
     # For now our config is just hardcoded here
-    config = {"simulated": True, "data_file": "test_data.csv"}
+    config = {"simulated": True}
 
     if(config.get("simulated")):
         log.info("Executing simulated algorithm.")
