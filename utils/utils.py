@@ -6,20 +6,27 @@ class KalshiEnvironment(Enum):
     DEMO = "demo"
     PROD = "prod"
 
+@dataclass
+class MarketOrder:
+    ticker: str
+    favored_side: str
+    count: int
+    limit_price_dollars: float
 
 @dataclass
 class MarketState:
-    ticker: str
-    favored_side: str
     open_ts: int
     close_ts: int
     closing_ask: Optional[float] = None
     live_ask: Optional[float] = None
     last_price: Optional[float] = None
+
+@dataclass
+class TraderState:
+    entry_price: float
+    contract_count: int
     entries_done: int = 0
     in_position: bool = False
-    entry_price: Optional[float] = None
-    contract_count: int = 0
     done: bool = False
     last_print_ts: Optional[int] = None
 
@@ -28,8 +35,11 @@ class StrategyConfig:
     entry_ratio: float
     stop_loss_ratio: float
     exit_ratio: float
+    secondary_exit_ratio: float
     max_entries: int
+    min_entry_ask: float
     balance_fraction: float
+    simulated:bool
 
 @dataclass
 class KalshiPortfolioResponse:

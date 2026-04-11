@@ -1,1 +1,57 @@
 KXNBAGAME-26APR09LALGSW-GSW,yes,0.53
+{'ticker': 'KXNBAGAME-26APR09PHIHOU-PHI', 'title': 'Philadelphia at Houston Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09PHIHOU-HOU', 'title': 'Philadelphia at Houston Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09LALGSW-LAL', 'title': 'Los Angeles L at Golden State Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09LALGSW-GSW', 'title': 'Los Angeles L at Golden State Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09INDBKN-IND', 'title': 'Indiana at Brooklyn Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09INDBKN-BKN', 'title': 'Indiana at Brooklyn Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09BOSNYK-NYK', 'title': 'Boston at New York Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09BOSNYK-BOS', 'title': 'Boston at New York Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09MIATOR-TOR', 'title': 'Miami at Toronto Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09MIATOR-MIA', 'title': 'Miami at Toronto Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09CHIWAS-WAS', 'title': 'Chicago at Washington Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR09CHIWAS-CHI', 'title': 'Chicago at Washington Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08DALPHX-PHX', 'title': 'Dallas at Phoenix Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08DALPHX-DAL', 'title': 'Dallas at Phoenix Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08PORSAS-SAS', 'title': 'Portland at San Antonio Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08PORSAS-POR', 'title': 'Portland at San Antonio Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MEMDEN-MEM', 'title': 'Memphis at Denver Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MEMDEN-DEN', 'title': 'Memphis at Denver Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08OKCLAC-OKC', 'title': 'Oklahoma City at Los Angeles C Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08OKCLAC-LAC', 'title': 'Oklahoma City at Los Angeles C Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MILDET-MIL', 'title': 'Milwaukee at Detroit Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MILDET-DET', 'title': 'Milwaukee at Detroit Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MINORL-ORL', 'title': 'Minnesota at Orlando Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08MINORL-MIN', 'title': 'Minnesota at Orlando Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08ATLCLE-CLE', 'title': 'Atlanta at Cleveland Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR08ATLCLE-ATL', 'title': 'Atlanta at Cleveland Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07SACGSW-SAC', 'title': 'Sacramento at Golden State Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07SACGSW-GSW', 'title': 'Sacramento at Golden State Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07DALLAC-LAC', 'title': 'Dallas at Los Angeles C Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07DALLAC-DAL', 'title': 'Dallas at Los Angeles C Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07HOUPHX-PHX', 'title': 'Houston at Phoenix Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07HOUPHX-HOU', 'title': 'Houston at Phoenix Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07UTANOP-UTA', 'title': 'Utah at New Orleans Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07UTANOP-NOP', 'title': 'Utah at New Orleans Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07OKCLAL-OKC', 'title': 'Oklahoma City at Los Angeles L Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07OKCLAL-LAL', 'title': 'Oklahoma City at Los Angeles L Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07CHABOS-CHA', 'title': 'Charlotte at Boston Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07CHABOS-BOS', 'title': 'Charlotte at Boston Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MIATOR-TOR', 'title': 'Miami at Toronto Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MIATOR-MIA', 'title': 'Miami at Toronto Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MILBKN-MIL', 'title': 'Milwaukee at Brooklyn Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MILBKN-BKN', 'title': 'Milwaukee at Brooklyn Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07CHIWAS-WAS', 'title': 'Chicago at Washington Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07CHIWAS-CHI', 'title': 'Chicago at Washington Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MININD-MIN', 'title': 'Minnesota at Indiana Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR07MININD-IND', 'title': 'Minnesota at Indiana Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06PORDEN-POR', 'title': 'Portland at Denver Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06PORDEN-DEN', 'title': 'Portland at Denver Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06CLEMEM-MEM', 'title': 'Cleveland at Memphis Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06CLEMEM-CLE', 'title': 'Cleveland at Memphis Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06PHISAS-SAS', 'title': 'Philadelphia at San Antonio Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06PHISAS-PHI', 'title': 'Philadelphia at San Antonio Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06NYKATL-NYK', 'title': 'New York at Atlanta Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06NYKATL-ATL', 'title': 'New York at Atlanta Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06DETORL-ORL', 'title': 'Detroit at Orlando Winner?', 'status': 'finalized'}
+{'ticker': 'KXNBAGAME-26APR06DETORL-DET', 'title': 'Detroit at Orlando Winner?', 'status': 'finalized'}
