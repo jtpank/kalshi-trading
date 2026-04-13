@@ -1,15 +1,16 @@
 
 from loguru import logger as log
 from traders.Trader import Trader
-from utils.utils import KalshiPortfolioResponse, MarketState, TraderState, KalshiEnvironment
+from utils.utils import KalshiPortfolioResponse, MarketState, CurrentStrategyState, KalshiEnvironment, RunType
 import os
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import serialization
 from KalshiClients.KalshiClients import KalshiHttpClient, KalshiWebSocketClient
 from datetime import datetime
-from model.strategy import StrategyConfig, SmaCrossoverStrategy
+from model.strategy import StrategyConfig, SmaCrossoverStrategy, MultiMarketRunner
 from pathlib import Path
 import pandas as pd
+import asyncio
 
 def load_private_key(key_file: str):
     with open(key_file, "rb") as f:
@@ -86,19 +87,38 @@ def load_market_state(state) -> MarketState:
                        last_price=state.get("close_yes_price_dollars"))
 
 
-def run_simulated():
+async def run_one_ticker(ticker_id, trader, strategy_config, strategy_state):
+    strategy = SmaCrossoverStrategy(config=strategy_config, trader=trader)
+    csv_file = Path(f"output_data/{ticker_id}_live_1s_ohlc.csv")
+    history = load_history(csv_file)
+
+    for tick in history:
+        market_state = load_market_state(tick)
+        await strategy.update(ticker_id, strategy_state, market_state)
+
+async def run_simulated():
     # $1000 or load from config...
-    initial_balance = 100000
+    initial_balance = 1000.0
+    initial_balance_cents = initial_balance * 100.0
     is_simulated = True
     
-    initial_portfolio = KalshiPortfolioResponse(balance=initial_balance, portfolio_value=0.0, updated_ts=0)
-    trader_state = TraderState(entry_price=0, contract_count=0, entries_done=0, in_position=False, done=False)
-    trader = Trader(portfolio=initial_portfolio, trader_state=trader_state, simulated=is_simulated, http_client=None)
+    initial_portfolio = KalshiPortfolioResponse(balance=initial_balance_cents, portfolio_value=0.0, updated_ts=0)
 
-    # Now simulate our Strategy over all the data we have which is essentially 1s candlesticks
-    # 1. load the input tickers
-    # 2. filter out dupes (i.e. if we are trading favorites, we only choose the yes side for one of the tickers)
-    # 3. instantiate StrategyRunner and update with each market state for each ticker history we have
+    # For each market (i.e. KXNBAGAME...) we need a CurrentStrategyState associated with the ticker
+    # This means we need to know how many tickers we are tracking
+    # For this example we are using 2 games to test
+    tickers_arr = ["KXNBAGAME-26APR06CLEMEM-CLE", "KXNBAGAME-26APR09LALGSW-GSW"]
+    ticker_to_market_dict = {}
+    for ticker in tickers_arr:
+        ticker_to_market_dict[ticker] = CurrentStrategyState(
+            entry_price=0, 
+            contract_count=0, 
+            entries_done=0, 
+            in_position=False, 
+            done=False)
+
+    # This is our only Trader instance   
+    trader = Trader(portfolio=initial_portfolio, simulated=is_simulated, http_client=None)
 
     strategy_config = StrategyConfig(simulated=is_simulated,
                                      entry_ratio=0.2, 
@@ -109,33 +129,19 @@ def run_simulated():
                                      min_entry_ask=0.25, # if it falls to 0.x * inital opening price, stop trading 
                                      balance_fraction=0.05)
     
-    strategy_runner = SmaCrossoverStrategy(config=strategy_config, trader=trader)
-
-    ## Pseudocode
-    # for ticker in tickers:
-    #     history = load_history(ticker)
-    #     for tick in history:
-    #         market_state = load_market_state(tick)
-    #         strategy_runner.update(market_state)
-
-    favorites_dir = Path("output_data/pregame_favorites")
-
-    for csv_file in favorites_dir.glob("*.csv"):
-        print(f"Processing {csv_file.name}...")
-
-        history = load_history(csv_file)
-        closing_ask = 0
-        first_tick = True
-        trader.reset_for_consecutive()
-        for tick in history:
-            market_state = load_market_state(tick)
-            # if first_tick:
-            #     first_tick = False
-            #     strategy_runner.set_closing_ask(market_state.closing_ask)
-            strategy_runner.update(market_state)
-
 
     
+    strategy = SmaCrossoverStrategy(config=strategy_config, trader=trader)
+    await asyncio.gather(*[
+        run_one_ticker(
+            ticker,
+            trader,
+            strategy_config,
+            ticker_to_market_dict[ticker],
+        )
+        for ticker in tickers_arr
+    ])
+
 
 def setup_trader(env: KalshiEnvironment) -> Trader | None:
     load_dotenv()
@@ -170,9 +176,58 @@ def setup_trader(env: KalshiEnvironment) -> Trader | None:
 
 def run_live():
     env = KalshiEnvironment.PROD
+    run_type = RunType.SINGLE_EVENT
     trader = setup_trader(env)
     assert trader is not None
     log.info("Trader configured.")
+
+    # if run_type == RunType.SINGLE_EVENT:
+    #     strategy_config = StrategyConfig(simulated=False,
+    #                         entry_ratio=0.2, 
+    #                         stop_loss_ratio=0.2, 
+    #                         exit_ratio=0.15,
+    #                         secondary_exit_ratio=0.30,
+    #                         max_entries=100,
+    #                         min_entry_ask=0.25, # if it falls to 0.x * inital opening price, stop trading 
+    #                         balance_fraction=0.05)
+    
+    #     strategy_runner = SmaCrossoverStrategy(config=strategy_config, trader=trader)
+
+    # TODO: make sure the below is tested for live trades...
+
+    """
+    tickers = [
+        "KXNBAGAME-26APR12LALGSW-LAL",
+        "KXNBAGAME-26APR12LALGSW-GSW",
+        "KXNBAGAME-26APR12BOSNYK-BOS",
+    ]
+
+    strategy_config = StrategyConfig(
+        simulated=False,
+        entry_ratio=0.2,
+        stop_loss_ratio=0.2,
+        exit_ratio=0.15,
+        secondary_exit_ratio=0.30,
+        max_entries=100,
+        min_entry_ask=0.25,
+        balance_fraction=0.05,
+    )
+
+    ws_client = load_ws_client(
+        key_id=os.getenv("PROD_KEYID"),
+        key_file=os.getenv("PROD_KEYFILE"),
+        env=env,
+    )
+
+    runner = MultiMarketRunner(
+        tickers=tickers,
+        trader=trader,
+        config=strategy_config,
+        ws_client=ws_client,
+    )
+
+    await runner.run()
+    """
 
 def main():
     config_file = "config.json"
@@ -182,7 +237,7 @@ def main():
 
     if(config.get("simulated")):
         log.info("Executing simulated algorithm.")
-        run_simulated()
+        asyncio.run(run_simulated())
     else:
         # TODO get from config
         log.info("Executing live algorithm.")

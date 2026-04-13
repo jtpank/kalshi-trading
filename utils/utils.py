@@ -6,6 +6,10 @@ class KalshiEnvironment(Enum):
     DEMO = "demo"
     PROD = "prod"
 
+class RunType(Enum):
+    SINGLE_EVENT = 1
+    MULTI_EVENT = 2
+
 @dataclass
 class MarketOrder:
     ticker: str
@@ -22,7 +26,7 @@ class MarketState:
     last_price: Optional[float] = None
 
 @dataclass
-class TraderState:
+class CurrentStrategyState:
     entry_price: float
     contract_count: int
     entries_done: int = 0

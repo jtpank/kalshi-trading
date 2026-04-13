@@ -1,6 +1,6 @@
 from loguru import logger as log
 from abc import ABC, abstractmethod
-from utils.utils import TraderState, MarketOrder, MarketState, StrategyConfig
+from utils.utils import CurrentStrategyState, MarketOrder, MarketState, StrategyConfig
 from typing import Optional
 from datetime import datetime, UTC
 import asyncio
@@ -20,16 +20,13 @@ class BaseStrategy(ABC):
     def __init__(self, config: StrategyConfig, trader: Trader) -> None:
         self.config = config
         self.trader = trader
-        self.closing_ask = 0
-        self.initial_closing_ask = 0
-        self.hit_initial_take_profit = False
     
     @abstractmethod
-    def should_enter(self, st: TraderState, market_st: MarketState) -> bool:
+    def should_enter(self, st: CurrentStrategyState, market_st: MarketState) -> bool:
         pass
 
     @abstractmethod
-    def should_exit(self, st: TraderState, market_st: MarketState) -> bool:
+    def should_exit(self, st: CurrentStrategyState, market_st: MarketState) -> bool:
         pass
 
 # this strategy does a buy at open on favorite, and holds
@@ -138,7 +135,7 @@ class SmaCrossoverStrategy(BaseStrategy):
         crossed = self.prev_sma30 >= self.prev_sma_long and self.curr_sma30 < self.curr_sma_long
         gap_ok = (self.curr_sma_long - self.curr_sma30) >= self.min_sma_gap
         return crossed and gap_ok
-    def should_enter(self, st: TraderState, market_st: MarketState) -> bool:
+    def should_enter(self, st: CurrentStrategyState, market_st: MarketState) -> bool:
         if st.done or st.in_position:
             return False
         if market_st.live_ask is None:
@@ -151,7 +148,7 @@ class SmaCrossoverStrategy(BaseStrategy):
             return False
         return self.pending_bullish and self._bullish_gap_ready()
 
-    def should_exit(self, st: TraderState, market_st: MarketState) -> bool:
+    def should_exit(self, st: CurrentStrategyState, market_st: MarketState) -> bool:
         if not st.in_position:
             return False
         if market_st.live_ask is None:
@@ -174,19 +171,15 @@ class SmaCrossoverStrategy(BaseStrategy):
 
         return self.pending_bearish and self._bearish_gap_ready()
 
-    def update(self, current_market_state: MarketState) -> None:
+    async def update(self, ticker_id: str, state: CurrentStrategyState, current_market_state: MarketState) -> None:
         self.tick_count += 1
-
-        current_trader_state = self.trader.get_trader_state()
-        if current_trader_state is None or current_trader_state.done:
-            return
 
         if not self.config.simulated:
             now_ts = int(datetime.now(UTC).timestamp())
             if now_ts < current_market_state.open_ts:
                 return
             if now_ts > current_market_state.close_ts:
-                current_trader_state.done = True
+                state.done = True
                 return
 
         if current_market_state.live_ask is None:
@@ -202,7 +195,8 @@ class SmaCrossoverStrategy(BaseStrategy):
             self.pending_bearish = True
             self.pending_bullish = False
 
-        if self.should_enter(current_trader_state, current_market_state):
+        if self.should_enter(state, current_market_state):
+            # This needs to go into the trader because it is a race condition for getting the port balance
             balance = self.trader.get_portfolio().balance / 100.0
             budget = balance * self.config.balance_fraction
             contract_count = max(1, math.floor(budget / current_market_state.live_ask))
@@ -212,17 +206,93 @@ class SmaCrossoverStrategy(BaseStrategy):
                 count=contract_count,
                 limit_price_dollars=current_market_state.live_ask,
             )
-            self.trader.place_entry(order)
+            await self.trader.place_entry(ticker_id, order, state)
             self.last_trade_tick = self.tick_count
             self.pending_bullish = False
 
-        elif self.should_exit(current_trader_state, current_market_state):
+        elif self.should_exit(state, current_market_state):
             order = MarketOrder(
                 ticker="simulated",
                 favored_side="yes",
-                count=current_trader_state.contract_count,
+                count=state.contract_count,
                 limit_price_dollars=current_market_state.live_ask,
             )
-            self.trader.place_exit(order, reason="sma_crossover")
+            await self.trader.place_exit(ticker_id, order, state, reason="sma_crossover")
             self.last_trade_tick = self.tick_count
             self.pending_bearish = False
+
+class MultiMarketRunner:
+    def __init__(self, tickers: list[str], trader: Trader, config, ws_client) -> None:
+        self.tickers = tickers
+        self.trader = trader
+        self.ws = ws_client
+
+        self.states: dict[str, CurrentStrategyState] = {
+            ticker: CurrentStrategyState(
+                entry_price=0,
+                contract_count=0,
+                entries_done=0,
+                in_position=False,
+                done=False,
+            )
+            for ticker in tickers
+        }
+
+        self.strategies: dict[str, SmaCrossoverStrategy] = {
+            ticker: SmaCrossoverStrategy(config=config, trader=trader)
+            for ticker in tickers
+        }
+
+    def _build_market_state(self, payload: dict) -> MarketState | None:
+        ticker = (
+            payload.get("market_ticker")
+            or payload.get("ticker")
+            or payload.get("market")
+        )
+
+        yes_ask = payload.get("yes_ask_dollars")
+        last_price = payload.get("price_dollars")
+
+        if yes_ask is None and last_price is None:
+            return None
+
+        ts = payload.get("ts")
+        if ts is None:
+            return None
+
+        return MarketState(
+            open_ts=0,  # replace if you have real market open ts
+            close_ts=9999999999,  # replace if you have real market close ts
+            closing_ask=yes_ask,
+            live_ask=yes_ask,
+            last_price=last_price,
+        )
+
+    async def ws_message_handler(self, data: dict):
+        msg_type = data.get("type") or data.get("msg_type")
+        if msg_type in {"subscribed", "error", "pong"}:
+            return
+
+        payload = data.get("msg") or data.get("data") or data
+
+        ticker = (
+            payload.get("market_ticker")
+            or payload.get("ticker")
+            or payload.get("market")
+        )
+        if ticker not in self.strategies:
+            return
+
+        market_state = self._build_market_state(payload)
+        if market_state is None:
+            return
+
+        strategy = self.strategies[ticker]
+        state = self.states[ticker]
+
+        await strategy.update(ticker, state, market_state)
+
+    async def run(self):
+        self.ws._tickers = self.tickers
+        self.ws._message_handler = self.ws_message_handler
+        await self.ws.connect()
