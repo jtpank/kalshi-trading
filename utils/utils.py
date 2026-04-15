@@ -46,19 +46,15 @@ class StrategyConfig:
     simulated:bool
 
 @dataclass
-class KalshiPortfolioResponse:
+class Portfolio:
     balance: int
     portfolio_value: int
     updated_ts: int
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "KalshiPortfolioResponse":
+    def from_dict(cls, data: Dict[str, Any]) -> "Portfolio":
         return cls(
             balance=int(data.get("balance", 0)),
             portfolio_value=int(data.get("portfolio_value", 0)),
             updated_ts=int(data.get("updated_ts", 0)),
         )
-
-@dataclass
-class Portfolio:
-    balance: float

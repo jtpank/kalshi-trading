@@ -20,7 +20,7 @@ class BaseTrader(ABC):
         self.portfolio = portfolio
 
     def get_balance(self) -> float:
-        return self.portfolio.balance
+        return self.portfolio.balance / 100.0
 
     @abstractmethod
     def place_entry(self, order: MarketOrder) -> EntryEnum:

@@ -8,18 +8,18 @@ class SimulatedTrader(BaseTrader):
         log.info("SimulatedTrader constructed with fields:")
         log.info(f"Portfolio: {self.portfolio}")
 
-    def place_entry(self, order: MarketOrder) -> EntryEnum:
+    def place_entry(self, ticker_id: str, order: MarketOrder) -> EntryEnum:
         cost = order.count * order.limit_price_dollars
-        if cost > self.portfolio.balance:
-            log.info(f"Balance of {self.portfolio.balance} is not sufficient to place trade for {order.count} shares at {order.limit_price_dollars}")
+        if cost > self.get_balance():
+            log.info(f"Balance of {self.get_balance()} is not sufficient to place trade for {order.count} shares at {order.limit_price_dollars}")
             return EntryEnum.FailureInsufficientBalance
-        self.portfolio.balance -= cost
-        log.info(f"Placed trade: {order.count} at {order.limit_price_dollars}")
+        self.portfolio.balance -= cost * 100.0
+        log.info(f"[{ticker_id} buy]: {order.count} at {order.limit_price_dollars}")
         return EntryEnum.Success
 
-    def place_exit(self, order:MarketOrder) -> ExitEnum:
+    def place_exit(self, ticker_id: str, order:MarketOrder) -> ExitEnum:
         proceeds = order.count * order.limit_price_dollars
-        self.portfolio.balance += proceeds
-        log.info(f"Placed trade: [sell] {order.count} at {order.limit_price_dollars}")
+        self.portfolio.balance += proceeds * 100.0
+        log.info(f"[{ticker_id} sell] {order.count} at {order.limit_price_dollars}")
         log.info(f"Balance after exit: {self.get_balance()}")
         return ExitEnum.Success

@@ -9,8 +9,12 @@ class FavoritesOnlyStrategy(BaseStrategy):
         super().__init__(trader)
         self.balance_fraction = 0.05
         self.max_contract_price_to_exit = 0.97
-        self.min_contract_price_to_exit = 0.03
+        self.buy_price = 0
+        self.stop_loss = 0.9
         self.strategy_state = strategy_state
+        # no stop loss with favorites: Balance after exit: 1228.3900000000026
+        # 50% stop loss: Balance after exit: 2006.3600000000001
+        # 80% stop loss: Balance after exit: 1563.6499999999965 (stop when ask is 20% of intial buy)
         log.info("Constructed Favorites only strategy")
 
     def update(self, ticker_id: str, current_market_state: MarketState) -> None:
@@ -24,22 +28,26 @@ class FavoritesOnlyStrategy(BaseStrategy):
         if not self.strategy_state.in_position:
             budget = self.trader.get_balance() * self.balance_fraction
             self.strategy_state.contract_count = max(1, math.floor(budget / current_market_state.live_ask))
+            self.buy_price = current_market_state.live_ask
             order = MarketOrder(
                 ticker="simulated",
                 favored_side="yes",
                 count=self.strategy_state.contract_count,
                 limit_price_dollars=current_market_state.live_ask,
             )
-            if self.trader.place_entry(order) == EntryEnum.Success:
+            if self.trader.place_entry(ticker_id, order) == EntryEnum.Success:
                 self.strategy_state.in_position = True
+            else:
+                log.info(f"\t {ticker_id} buy failed!")
         else:
             # we are in position, check if we should exit
-            if current_market_state.live_ask > self.max_contract_price_to_exit or current_market_state.live_ask <= self.min_contract_price_to_exit:
+            if current_market_state.live_ask > self.max_contract_price_to_exit or current_market_state.live_ask <= self.buy_price * (1-self.stop_loss):
                 order = MarketOrder(
                     ticker="simulated",
                     favored_side="yes",
                     count=self.strategy_state.contract_count,
                     limit_price_dollars=current_market_state.live_ask,
                 )
-                self.trader.place_exit(order)
+                self.trader.place_exit(ticker_id, order)
+                self.strategy_state.in_position = False
                 self.strategy_state.done = True

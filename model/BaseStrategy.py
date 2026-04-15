@@ -4,7 +4,7 @@ from utils.utils import CurrentStrategyState, MarketOrder, MarketState, Strategy
 from typing import Optional
 from datetime import datetime, UTC
 import uuid
-from traders.Trader import Trader
+from traders.BaseTrader import BaseTrader
 
 
 #Helpers
@@ -14,7 +14,7 @@ def to_float(value) -> Optional[float]:
     return float(value)
 
 class BaseStrategy(ABC):
-    def __init__(self, trader: Trader) -> None:
+    def __init__(self, trader: BaseTrader) -> None:
         self.trader = trader
 
     @abstractmethod
