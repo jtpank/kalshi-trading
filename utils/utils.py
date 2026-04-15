@@ -58,3 +58,7 @@ class KalshiPortfolioResponse:
             portfolio_value=int(data.get("portfolio_value", 0)),
             updated_ts=int(data.get("updated_ts", 0)),
         )
+
+@dataclass
+class Portfolio:
+    balance: float

@@ -1,13 +1,15 @@
 
 from loguru import logger as log
 from traders.Trader import Trader
-from utils.utils import KalshiPortfolioResponse, MarketState, CurrentStrategyState, KalshiEnvironment, RunType
+from traders.SimulatedTrader import SimulatedTrader
+from utils.utils import KalshiPortfolioResponse, MarketState, CurrentStrategyState, KalshiEnvironment, RunType, Portfolio
 import os
 from dotenv import load_dotenv
 from cryptography.hazmat.primitives import serialization
 from KalshiClients.KalshiClients import KalshiHttpClient, KalshiWebSocketClient
 from datetime import datetime
 from model.strategy import StrategyConfig, SmaCrossoverStrategy, MultiMarketRunner
+from model.FavoritesOnlyStrategy import FavoritesOnlyStrategy
 from pathlib import Path
 import pandas as pd
 import asyncio
@@ -229,6 +231,59 @@ def run_live():
     await runner.run()
     """
 
+
+def base_simulation_run():
+    initial_balance = 1000.0
+    initial_portfolio = Portfolio(balance=initial_balance)
+    trader = SimulatedTrader(portfolio=initial_portfolio)
+    tickers_arr = [
+        "KXNBAGAME-26APR06CLEMEM-CLE",
+        "KXNBAGAME-26APR06DETORL-DET",
+        "KXNBAGAME-26APR06DETORL-ORL",
+        "KXNBAGAME-26APR06NYKATL-ATL",
+        "KXNBAGAME-26APR06PHISAS-SAS",
+        "KXNBAGAME-26APR06PORDEN-DEN",
+        "KXNBAGAME-26APR07CHABOS-BOS",
+        "KXNBAGAME-26APR07CHIWAS-CHI",
+        "KXNBAGAME-26APR07DALLAC-LAC",
+        "KXNBAGAME-26APR07HOUPHX-HOU",
+        "KXNBAGAME-26APR07MIATOR-TOR",
+        "KXNBAGAME-26APR07MILBKN-MIL",
+        "KXNBAGAME-26APR07MININD-MIN",
+        "KXNBAGAME-26APR07OKCLAL-OKC",
+        "KXNBAGAME-26APR07SACGSW-GSW",
+        "KXNBAGAME-26APR07UTANOP-NOP",
+        "KXNBAGAME-26APR08ATLCLE-CLE",
+        "KXNBAGAME-26APR08DALPHX-PHX",
+        "KXNBAGAME-26APR08MEMDEN-DEN",
+        "KXNBAGAME-26APR08MILDET-DET",
+        "KXNBAGAME-26APR08MINORL-ORL",
+        "KXNBAGAME-26APR08OKCLAC-OKC",
+        "KXNBAGAME-26APR08PORSAS-SAS",
+        "KXNBAGAME-26APR09BOSNYK-NYK",
+        "KXNBAGAME-26APR09CHIWAS-CHI",
+        "KXNBAGAME-26APR09INDBKN-IND",
+        "KXNBAGAME-26APR09LALGSW-GSW",
+        "KXNBAGAME-26APR09MIATOR-TOR",
+    ]
+    ticker_to_market_dict = {}
+    for ticker in tickers_arr:
+        ticker_to_market_dict[ticker] = CurrentStrategyState(
+            entry_price=0, 
+            contract_count=0, 
+            entries_done=0, 
+            in_position=False, 
+            done=False)
+
+        strategy = FavoritesOnlyStrategy(trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        csv_file = Path(f"output_data/pregame_favorites/{ticker}_live_1s_ohlc.csv")
+        history = load_history(csv_file)
+
+        for tick in history:
+            market_state = load_market_state(tick)
+            strategy.update(ticker, market_state)
+
+
 def main():
     config_file = "config.json"
     log.info(f"Executing main with configuration: {config_file}")
@@ -237,7 +292,9 @@ def main():
 
     if(config.get("simulated")):
         log.info("Executing simulated algorithm.")
-        asyncio.run(run_simulated())
+        # asyncio.run(run_simulated())
+        base_simulation_run()
+
     else:
         # TODO get from config
         log.info("Executing live algorithm.")

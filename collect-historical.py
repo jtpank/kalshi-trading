@@ -1,6 +1,6 @@
 import os
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, UTC
 from typing import Any
 
 from dotenv import load_dotenv
@@ -235,6 +235,47 @@ def load_tickers(path: str) -> list[str]:
     with open(path, "r") as f:
         return [line.strip() for line in f if line.strip()]
 
+def write_nba_tickers_last_3_months(client, output_file: str = "tickers.txt") -> list[str]:
+    cutoff_ts = int((datetime.now(UTC) - timedelta(days=90)).timestamp())
+    tickers = set()
+
+    def fetch_pages(status: str, time_field: str) -> None:
+        cursor = None
+        while True:
+            params = {
+                "series_ticker": "KXNBAGAME",
+                "status": status,
+                "limit": 1000,
+                time_field: cutoff_ts,
+            }
+            if cursor:
+                params["cursor"] = cursor
+
+            resp = client.get(client.markets_url, params=params)
+            for market in resp.get("markets", []):
+                ticker = market.get("ticker")
+                if ticker:
+                    tickers.add(ticker)
+
+            cursor = resp.get("cursor")
+            if not cursor:
+                break
+
+    # open / closed markets in last ~3 months
+    fetch_pages("open", "min_close_ts")
+    fetch_pages("closed", "min_close_ts")
+
+    # settled markets in last ~3 months that are still in live storage
+    fetch_pages("settled", "min_settled_ts")
+
+    sorted_tickers = sorted(tickers)
+
+    with open(output_file, "w", newline="") as f:
+        for ticker in sorted_tickers:
+            f.write(f"{ticker}\n")
+
+    return sorted_tickers
+
 def main() -> None:
     client = load_client()
 
@@ -242,6 +283,21 @@ def main() -> None:
     # ticker = "KXNBAGAME-26APR09LALGSW-GSW"
     tickers = load_tickers("tickers.txt")
     for ticker in tickers:
+        raw_csv_live = Path(f"output_data/live_raw_trades/{ticker}_live_raw_trades.csv")
+        raw_csv_historical = Path(f"output_data/live_raw_trades/{ticker}_historical_raw_trades.csv")
+        ohlc_csv_live = Path(f"output_data/{ticker}_live_1s_ohlc.csv")
+        ohlc_csv_historical = Path(f"output_data/{ticker}_historical_1s_ohlc.csv")
+
+        if (
+            raw_csv_live.exists()
+            or raw_csv_historical.exists()
+            or ohlc_csv_live.exists()
+            or ohlc_csv_historical.exists()
+        ):
+            print(f"Skipping {ticker}: at least one output file already exists")
+            continue
+
+
         print(f"Fetching market for {ticker}...")
         market = get_market(client, ticker)
 
@@ -403,6 +459,12 @@ def process_historical_csv():
     #         f"kept {len(filtered_df)}/{len(df)} rows -> {output_file}"
     #     )
 
+
+def get_tickers_last3months():
+    client = load_client()
+    tickers = write_nba_tickers_last_3_months(client, "tickers.txt")
+    print(f"wrote {len(tickers)} tickers to tickers.txt")
+
 if __name__ == "__main__":
-    # process_historical_csv()
+    process_historical_csv()
     pass
