@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from KalshiClients.KalshiClients import KalshiHttpClient, KalshiWebSocketClient
 from datetime import datetime, UTC
 from model.FavoritesOnlyStrategy import FavoritesOnlyStrategy
+from model.SmaCrossoverStrategy import SmaCrossoverStrategy
 from pathlib import Path
 import pandas as pd
 import asyncio
@@ -147,7 +148,7 @@ def run_live():
 
     tickers_arr = ["KXNBAGAME-26APR14PORPHX-PHX"]
     market_states: dict[str, MarketState] = {}
-    strategies: dict[str, FavoritesOnlyStrategy] = {}
+    strategies: dict[str, SmaCrossoverStrategy] = {}
     ticker_to_market_dict: dict[str, CurrentStrategyState] = {}
     for ticker in tickers_arr:
         ticker_to_market_dict[ticker] = CurrentStrategyState(
@@ -164,7 +165,7 @@ def run_live():
                 last_price=None,
             )
         market_states[ticker] = market_state
-        strategies[ticker] = FavoritesOnlyStrategy(trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        strategies[ticker] = SmaCrossoverStrategy(simulated=False, trader=trader, strategy_state=ticker_to_market_dict[ticker])
     
     ws_client = setup_ws_client(env)
     assert ws_client is not None
@@ -189,13 +190,15 @@ def run_live():
         if yes_ask is None and no_ask is None and last_price is None:
             return
 
-        market_states[rec_ticker] = MarketState(
-            open_ts=market_states[rec_ticker].open_ts,
-            close_ts=market_states[rec_ticker].close_ts,
-            closing_ask=market_states[rec_ticker].closing_ask,
-            live_ask=float(yes_ask) if yes_ask is not None else market_states[rec_ticker].live_ask,
-            last_price=float(last_price) if last_price is not None else market_states[rec_ticker].last_price,
-        )
+        st = market_states[rec_ticker]
+        if yes_ask is not None:
+            st.live_ask = float(yes_ask)
+        if last_price is not None:
+            st.last_price = float(last_price)
+        if rec_ticker not in market_states:
+            log.error(f"rec_ticker: {rec_ticker} not in market_states!")
+            return
+        await strategies[rec_ticker].update(rec_ticker, market_states[rec_ticker])
         
     async def print_loop():
         while True:
