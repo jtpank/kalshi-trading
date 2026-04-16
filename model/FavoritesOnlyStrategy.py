@@ -5,8 +5,9 @@ from loguru import logger as log
 import math
 
 class FavoritesOnlyStrategy(BaseStrategy):
-    def __init__(self, trader: BaseTrader, strategy_state: CurrentStrategyState) -> None:
+    def __init__(self, simulated: bool, trader: BaseTrader, strategy_state: CurrentStrategyState) -> None:
         super().__init__(trader)
+        self.simulated = simulated
         self.balance_fraction = 0.05
         self.max_contract_price_to_exit = 0.97
         self.buy_price = 0

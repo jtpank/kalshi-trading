@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from utils.utils import CurrentStrategyState, MarketOrder, MarketState
 from typing import Optional
 from datetime import datetime, UTC
-import asyncio
 import math
 import uuid
 from collections import deque
@@ -19,12 +18,12 @@ class SmaCrossoverStrategy(BaseStrategy):
     def __init__(self, simulated: bool, trader: BaseTrader, strategy_state: CurrentStrategyState) -> None:
         super().__init__(trader)
         self.simulated = simulated
+        self.strategy_state = strategy_state
         self.balance_fraction = 0.05
         self.stop_loss_ratio = 0.3
         self.len_long_sma = 60
         self.min_ask_bound = 0.07
         self.max_ask_bound = 0.88
-        self.strategy_state = strategy_state
         self.max_contract_profit_threshold = 0.95
         self.close_window_30 = deque(maxlen=30)
         self.close_window = deque(maxlen=self.len_long_sma)
@@ -148,7 +147,7 @@ class SmaCrossoverStrategy(BaseStrategy):
 
         return self.pending_bearish and self._bearish_gap_ready()
 
-    async def update(self, ticker_id: str, current_market_state: MarketState) -> None:
+    def update(self, ticker_id: str, current_market_state: MarketState) -> None:
         self.tick_count += 1
 
         if current_market_state.live_ask is None:
@@ -159,10 +158,10 @@ class SmaCrossoverStrategy(BaseStrategy):
         if len(self.close_window) < self.len_long_sma:
             log.info(f"\t filling out sma long window: {len(self.close_window) }")
             return
-        log.info(f"\tprev sma30: {self.prev_sma30}")
-        log.info(f"\tprev smalong: {self.prev_sma_long}")
-        log.info(f"\tcurr sma30: {self.curr_sma30}")
-        log.info(f"\tcurr sma_long: {self.curr_sma_long}")
+        #log.info(f"\tprev sma30: {self.prev_sma30}")
+        #log.info(f"\tprev smalong: {self.prev_sma_long}")
+        #log.info(f"\tcurr sma30: {self.curr_sma30}")
+        #log.info(f"\tcurr sma_long: {self.curr_sma_long}")
 
         if self._crossed_bullish_now():
             self.pending_bullish = True
@@ -176,14 +175,15 @@ class SmaCrossoverStrategy(BaseStrategy):
             # This needs to go into the trader because it is a race condition for getting the port balance
             balance = self.trader.available_balance_dollars()
             budget = balance * self.balance_fraction
-            contract_count = max(1, math.floor(budget / current_market_state.live_ask))
+            self.strategy_state.contract_count = max(1, math.floor(budget / current_market_state.live_ask))
             order = MarketOrder(
                 ticker=ticker_id,
                 favored_side="yes",
-                count=contract_count,
+                count=self.strategy_state.contract_count,
                 limit_price_dollars=current_market_state.live_ask,
             )
-            await self.trader.place_entry(ticker_id, order)
+            self.trader.place_entry(ticker_id, order)
+            self.strategy_state.in_position = True
             self.last_trade_tick = self.tick_count
             self.pending_bullish = False
 
@@ -194,6 +194,7 @@ class SmaCrossoverStrategy(BaseStrategy):
                 count=self.strategy_state.contract_count,
                 limit_price_dollars=current_market_state.live_ask,
             )
-            await self.trader.place_exit(ticker_id, order)
+            self.trader.place_exit(ticker_id, order)
+            self.strategy_state.in_position = False
             self.last_trade_tick = self.tick_count
             self.pending_bearish = False

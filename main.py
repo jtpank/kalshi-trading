@@ -230,7 +230,7 @@ def base_simulation_run():
     initial_portfolio = Portfolio(balance=initial_balance, portfolio_value=0, updated_ts=0)
     trader = SimulatedTrader(portfolio=initial_portfolio)
     tickers_arr = []
-    with open("favorites_tickers.txt", "r") as f:
+    with open("underdogs.txt", "r") as f:
         tickers_arr = [line.strip() for line in f if line.strip()]
     ticker_to_market_dict = {}
     for ticker in tickers_arr:
@@ -241,8 +241,9 @@ def base_simulation_run():
             in_position=False, 
             done=False)
 
-        strategy = FavoritesOnlyStrategy(trader=trader, strategy_state=ticker_to_market_dict[ticker])
-        csv_file = Path(f"output_data/pregame_favorites/{ticker}_live_1s_ohlc.csv")
+        #strategy = FavoritesOnlyStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        strategy = SmaCrossoverStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        csv_file = Path(f"output_data/pregame_underdogs/{ticker}_live_1s_ohlc.csv")
         history = load_history(csv_file)
         last_market_state = None
         for tick in history:
@@ -268,7 +269,7 @@ def main():
     config_file = "config.json"
     log.info(f"Executing main with configuration: {config_file}")
     # For now our config is just hardcoded here
-    config = {"simulated": False}
+    config = {"simulated": True}
 
     if(config.get("simulated")):
         log.info("Executing simulated algorithm.")

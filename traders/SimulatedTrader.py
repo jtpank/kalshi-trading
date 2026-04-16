@@ -8,6 +8,9 @@ class SimulatedTrader(BaseTrader):
         log.info("SimulatedTrader constructed with fields:")
         log.info(f"Portfolio: {self.portfolio}")
 
+    def available_balance_dollars(self) -> float:
+        return self.get_balance() 
+
     def place_entry(self, ticker_id: str, order: MarketOrder) -> EntryEnum:
         cost = order.count * order.limit_price_dollars
         if cost > self.get_balance():
