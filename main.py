@@ -85,8 +85,8 @@ def load_market_state(state) -> MarketState:
     return MarketState(open_ts=state.get("ts"),
                        close_ts=state.get("ts"),
                        closing_ask=state.get("close_yes_price_dollars"),
-                       live_ask=state.get("close_yes_price_dollars"),
-                       last_price=state.get("close_yes_price_dollars"))
+                       live_ask=state.get("open_yes_price_dollars"),
+                       last_price=state.get("open_yes_price_dollars"))
 
 
 async def run_one_ticker(ticker_id, trader, strategy_config, strategy_state):
@@ -146,7 +146,8 @@ def run_live():
     assert trader is not None
     log.info("Trader configured.")
 
-    tickers_arr = ["KXNBAGAME-26APR14PORPHX-PHX"]
+    tickers_arr = ["kxnbagame-26apr15orlphi-orl"]
+    tickers_arr = [ticker.upper() for ticker in tickers_arr]
     market_states: dict[str, MarketState] = {}
     strategies: dict[str, SmaCrossoverStrategy] = {}
     ticker_to_market_dict: dict[str, CurrentStrategyState] = {}
@@ -198,7 +199,7 @@ def run_live():
         if rec_ticker not in market_states:
             log.error(f"rec_ticker: {rec_ticker} not in market_states!")
             return
-        await strategies[rec_ticker].update(rec_ticker, market_states[rec_ticker])
+        # await strategies[rec_ticker].update(rec_ticker, market_states[rec_ticker])
         
     async def print_loop():
         while True:
@@ -230,7 +231,7 @@ def base_simulation_run():
     initial_portfolio = Portfolio(balance=initial_balance, portfolio_value=0, updated_ts=0)
     trader = SimulatedTrader(portfolio=initial_portfolio)
     tickers_arr = []
-    with open("underdogs.txt", "r") as f:
+    with open("favorites_tickers.txt", "r") as f:
         tickers_arr = [line.strip() for line in f if line.strip()]
     ticker_to_market_dict = {}
     for ticker in tickers_arr:
@@ -243,7 +244,7 @@ def base_simulation_run():
 
         #strategy = FavoritesOnlyStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
         strategy = SmaCrossoverStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
-        csv_file = Path(f"output_data/pregame_underdogs/{ticker}_live_1s_ohlc.csv")
+        csv_file = Path(f"output_data/pregame_favorites/{ticker}_live_1s_ohlc.csv")
         history = load_history(csv_file)
         last_market_state = None
         for tick in history:

@@ -156,7 +156,7 @@ class SmaCrossoverStrategy(BaseStrategy):
         self._update_smas(current_market_state.live_ask)
 
         if len(self.close_window) < self.len_long_sma:
-            log.info(f"\t filling out sma long window: {len(self.close_window) }")
+            # log.info(f"\t filling out sma long window: {len(self.close_window) }")
             return
         #log.info(f"\tprev sma30: {self.prev_sma30}")
         #log.info(f"\tprev smalong: {self.prev_sma_long}")
@@ -198,3 +198,19 @@ class SmaCrossoverStrategy(BaseStrategy):
             self.strategy_state.in_position = False
             self.last_trade_tick = self.tick_count
             self.pending_bearish = False
+
+
+
+"""
+2026-04-16 18:41:54.480 | INFO     | traders.SimulatedTrader:place_exit:26 - [KXNBAGAME-26MAR31TORDET-DET sell] 1593 at 0.95
+2026-04-16 18:41:54.481 | INFO     | traders.SimulatedTrader:place_exit:27 - Balance after exit: 23313.53
+
+Using Close bars only!
+self.balance_fraction = 0.05
+self.stop_loss_ratio = 0.3
+self.len_long_sma = 60
+self.min_ask_bound = 0.07
+self.max_ask_bound = 0.88
+self.max_contract_profit_threshold = 0.95
+self.close_window_30 = deque(maxlen=30)
+"""

@@ -3,7 +3,6 @@ import math
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 class Analysis:
     def __init__(self):
@@ -29,7 +28,14 @@ class Analysis:
 
         return self.df
 
-    def analyze_reversions(self, price_col: str, time_col: str):
+    def analyze_reversions(
+        self,
+        price_col: str,
+        time_col: str,
+        epsilon: float = 0.02,
+        preterminal_cutoff: float = 10200,
+        terminal_cutoff: float = 10800,
+    ):
         if self.df is None:
             raise ValueError("Data is not loaded yet")
         if price_col not in self.df.columns:
@@ -44,81 +50,205 @@ class Analysis:
             raise ValueError("No usable data after dropping NaNs")
 
         x = values[price_col].astype(float).to_numpy()
-        t = values[time_col].to_numpy()
-
-        x0 = x[0]
+        t = values[time_col].astype(float).to_numpy()
+        t = t - t[0]
+        x0 = float(x[0])
         delta = x - x0
 
-        delta_filtered = np.array([0 if math.fabs(v) < 0.02 else v for v in delta])
+        def sign_with_band(v: float) -> int:
+            if v > epsilon:
+                return 1
+            if v < -epsilon:
+                return -1
+            return 0
 
-        local_mins = []
-        local_maxs = []
-        cross_neg = []
+        delta_filtered = np.array([0.0 if math.fabs(v) < epsilon else v for v in delta])
+        signs = np.array([sign_with_band(v) for v in delta])
+
+        # Pre-terminal only
+        pre_mask = t < preterminal_cutoff
+        pre_idx = np.where(pre_mask)[0]
+
+        if len(pre_idx) == 0:
+            raise ValueError("No data before preterminal cutoff")
+
         cross_pos = []
-        last_sign = 0  # -1, 0, +1
-        for idx, val in enumerate(delta_filtered[1:], start=1):
-            if val > 0:
-                curr_sign = 1
-            elif val < 0:
-                curr_sign = -1
-            else:
-                curr_sign = 0
+        cross_neg = []
+        excursions = []
+
+        last_sign = 0
+        excursion_start_idx = None
+        excursion_start_sign = None
+
+        for idx in pre_idx:
+            curr_sign = signs[idx]
 
             if curr_sign == 0:
                 continue
 
-            if last_sign == 1 and curr_sign == -1:
-                cross_neg.append(idx)
+            if last_sign == 0:
+                last_sign = curr_sign
+                excursion_start_idx = idx
+                excursion_start_sign = curr_sign
+                continue
 
-            if last_sign == -1 and curr_sign == 1:
-                cross_pos.append(idx)
+            if curr_sign != last_sign:
+                segment_start = excursion_start_idx
+                segment_end = idx
 
-            last_sign = curr_sign
+                seg_delta = delta[segment_start:segment_end + 1]
+                seg_t = t[segment_start:segment_end + 1]
 
-        print(f"pos: {len(cross_pos)} neg: {len(cross_neg)}")
+                peak_delta = float(np.max(seg_delta))
+                valley_delta = float(np.min(seg_delta))
 
-        log.info(f"Reference level x0 = {x0:.4f}")
-        plt.figure(figsize=(10, 5))
-        plt.plot(t, delta_filtered, label="delta = x(t) - x0")
-        plt.axhline(0.0, linestyle="--", label="x0 reference")
+                excursion = {
+                    "start_idx": int(segment_start),
+                    "end_idx": int(segment_end),
+                    "start_time": float(seg_t[0]),
+                    "end_time": float(seg_t[-1]),
+                    "duration": float(seg_t[-1] - seg_t[0]),
+                    "start_sign": int(excursion_start_sign),
+                    "end_sign": int(curr_sign),
+                    "cross_type": "neg_to_pos" if excursion_start_sign == -1 and curr_sign == 1 else "pos_to_neg",
+                    "peak_delta": peak_delta,
+                    "valley_delta": valley_delta,
+                    "peak_abs_price": float(x0 + peak_delta),
+                    "valley_abs_price": float(x0 + valley_delta),
+                    "amplitude": float(peak_delta - valley_delta),
+                    "returned_before_cutoff": True,
+                }
+                excursions.append(excursion)
 
-        if cross_pos:
-            plt.scatter(
-                t[cross_pos],
-                delta_filtered[cross_pos],
-                marker="x",
-                s=80,
-                c="green",
-                label="cross_pos",
-                zorder=3,
-            )
+                if curr_sign == 1:
+                    cross_pos.append(idx)
+                else:
+                    cross_neg.append(idx)
 
-        if cross_neg:
-            plt.scatter(
-                t[cross_neg],
-                delta_filtered[cross_neg],
-                marker="x",
-                s=80,
-                c="red",
-                label="cross_neg",
-                zorder=3,
-            )
+                excursion_start_idx = idx
+                excursion_start_sign = curr_sign
+                last_sign = curr_sign
 
-        plt.xlabel(time_col)
-        plt.ylabel("Delta")
-        plt.title(f"delta vs {time_col}")
-        plt.legend()
-        plt.tight_layout()
-        plt.show()
+        # Final unfinished pre-terminal excursion
+        if excursion_start_idx is not None:
+            last_pre_idx = pre_idx[-1]
+            if excursion_start_idx < last_pre_idx:
+                seg_delta = delta[excursion_start_idx:last_pre_idx + 1]
+                seg_t = t[excursion_start_idx:last_pre_idx + 1]
+
+                excursions.append({
+                    "start_idx": int(excursion_start_idx),
+                    "end_idx": int(last_pre_idx),
+                    "start_time": float(seg_t[0]),
+                    "end_time": float(seg_t[-1]),
+                    "duration": float(seg_t[-1] - seg_t[0]),
+                    "start_sign": int(excursion_start_sign),
+                    "end_sign": int(excursion_start_sign),
+                    "cross_type": "unfinished",
+                    "peak_delta": float(np.max(seg_delta)),
+                    "valley_delta": float(np.min(seg_delta)),
+                    "peak_abs_price": float(x0 + np.max(seg_delta)),
+                    "valley_abs_price": float(x0 + np.min(seg_delta)),
+                    "amplitude": float(np.max(seg_delta) - np.min(seg_delta)),
+                    "returned_before_cutoff": False,
+                })
+
+        excursions_df = pd.DataFrame(excursions)
+
+        completed_excursions = (
+            excursions_df[excursions_df["cross_type"] != "unfinished"].copy()
+            if not excursions_df.empty else pd.DataFrame()
+        )
+
+        # Terminal window stats
+        term_mask = (t >= preterminal_cutoff) & (t <= terminal_cutoff)
+        term_idx = np.where(term_mask)[0]
+
+        terminal_summary = {}
+        if len(term_idx) > 0:
+            terminal_delta = delta[term_idx]
+            terminal_x = x[term_idx]
+
+            terminal_summary = {
+                "terminal_start_time": float(t[term_idx[0]]),
+                "terminal_end_time": float(t[term_idx[-1]]),
+                "terminal_points": int(len(term_idx)),
+                "terminal_start_price": float(terminal_x[0]),
+                "terminal_end_price": float(terminal_x[-1]),
+                "terminal_start_delta": float(terminal_delta[0]),
+                "terminal_end_delta": float(terminal_delta[-1]),
+                "terminal_max_price": float(np.max(terminal_x)),
+                "terminal_min_price": float(np.min(terminal_x)),
+                "terminal_mean_price": float(np.mean(terminal_x)),
+            }
+
+        summary = {
+            "x0": x0,
+            "num_points_total": int(len(x)),
+            "num_points_preterminal": int(len(pre_idx)),
+            "num_cross_pos_preterminal": int(len(cross_pos)),
+            "num_cross_neg_preterminal": int(len(cross_neg)),
+            "num_cross_total_preterminal": int(len(cross_pos) + len(cross_neg)),
+            "num_excursions_total_preterminal": int(len(excursions_df)),
+            "num_completed_excursions_preterminal": int(len(completed_excursions)),
+            "fraction_excursions_returned_before_cutoff": (
+                float(completed_excursions.shape[0] / excursions_df.shape[0])
+                if not excursions_df.empty else np.nan
+            ),
+            "max_peak_delta_preterminal": (
+                float(completed_excursions["peak_delta"].max())
+                if not completed_excursions.empty else np.nan
+            ),
+            "max_valley_delta_preterminal": (
+                float(completed_excursions["valley_delta"].min())
+                if not completed_excursions.empty else np.nan
+            ),
+            "avg_excursion_duration_preterminal": (
+                float(completed_excursions["duration"].mean())
+                if not completed_excursions.empty else np.nan
+            ),
+            "median_excursion_duration_preterminal": (
+                float(completed_excursions["duration"].median())
+                if not completed_excursions.empty else np.nan
+            ),
+        }
+
+        summary.update(terminal_summary)
+
+        log.info(f"x0 = {x0:.4f}")
+        log.info(f"pre-terminal positive crossovers: {summary['num_cross_pos_preterminal']}")
+        log.info(f"pre-terminal negative crossovers: {summary['num_cross_neg_preterminal']}")
+        log.info(f"fraction returned before cutoff: {summary['fraction_excursions_returned_before_cutoff']}")
+
+        print("\nSUMMARY")
+        for k, v in summary.items():
+            print(f"{k}: {v}")
+
+        if not excursions_df.empty:
+            print("\nEXCURSIONS")
+            print(excursions_df.head(20))
+
+        return summary, excursions_df
 
     def run(self):
         log.info("Executing...")
-        game = "KXNBAGAME-26APR06DETORL-DET"
-        csv_path = Path(f"../output_data/pregame_favorites/{game}_live_1s_ohlc.csv")
-        df = self.load_data(csv_path)
-        price_col = "open_yes_price_dollars"
-        time_col = "time"
-        self.analyze_reversions(price_col, time_col)
+        game = "KXNBAGAME-26APR01ATLORL-ATL"
+        with open("/home/justin/Desktop/000-github/kalshi-trading/favorites_tickers.txt", "r") as f:
+            tickers = [line.strip() for line in f if line.strip()]
+        for idx, game in enumerate(tickers):
+            csv_path = Path(f"../output_data/pregame_favorites/{game}_live_1s_ohlc.csv")
+            df = self.load_data(csv_path)
+            price_col = "open_yes_price_dollars"
+            time_col = "ts"
+            self.analyze_reversions(
+                price_col=price_col,
+                time_col=time_col,
+                epsilon=0.02,
+                preterminal_cutoff=9000,
+                terminal_cutoff=10800,
+            )
+            if idx == 10:
+                break
 
 
 
