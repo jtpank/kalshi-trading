@@ -234,7 +234,7 @@ def base_simulation_run():
     with open("favorites_tickers.txt", "r") as f:
         tickers_arr = [line.strip() for line in f if line.strip()]
     ticker_to_market_dict = {}
-    for ticker in tickers_arr:
+    for idx, ticker in enumerate(tickers_arr):
         ticker_to_market_dict[ticker] = CurrentStrategyState(
             entry_price=0, 
             contract_count=0, 
@@ -242,8 +242,8 @@ def base_simulation_run():
             in_position=False, 
             done=False)
 
-        #strategy = FavoritesOnlyStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
-        strategy = SmaCrossoverStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        strategy = FavoritesOnlyStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
+        # strategy = SmaCrossoverStrategy(simulated=True, trader=trader, strategy_state=ticker_to_market_dict[ticker])
         csv_file = Path(f"output_data/pregame_favorites/{ticker}_live_1s_ohlc.csv")
         history = load_history(csv_file)
         last_market_state = None
@@ -264,6 +264,8 @@ def base_simulation_run():
                 )
             strategy.trader.place_exit(ticker, order)
             strategy.strategy_state.done = True
+    log.info(f"Total fees: {trader.get_total_fees()}")
+    log.info(f"Total trades: {trader.get_total_trades()}")
 
 
 def main():

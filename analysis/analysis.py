@@ -3,6 +3,13 @@ import math
 from pathlib import Path
 import pandas as pd
 import numpy as np
+from dataclasses import dataclass
+@dataclass
+class MarketOrder:
+    ticker: str
+    favored_side: str
+    count: int
+    limit_price_dollars: float
 
 class Analysis:
     def __init__(self):
@@ -249,10 +256,60 @@ class Analysis:
             )
             if idx == 10:
                 break
-
+fees_per100 = {
+    1 : 7,
+    5 : 34,
+    10 : 63,
+    15 : 90,
+    20 : 112,
+    25 : 132,
+    30 : 147,
+    35 : 160,
+    40 : 168,
+    45 : 174,
+    50 : 175,
+    55 : 174,
+    60 : 168,
+    65 : 160,
+    70 : 147,
+    75 : 132,
+    80 : 112,
+    90 : 90,
+    95 : 34,
+    99 : 7
+}
+def compute_fee(order: MarketOrder) -> float:
+    hundred_contracts = order.count // 100
+    print(f"hundred_contracts: {hundred_contracts}")
+    single_contracts = order.count % 100
+    print(f"single_contracts: {single_contracts}")
+    price = order.limit_price_dollars * 100
+    print(f"price: {price}")
+    def normalize_price_key(price_cents: float) -> int:
+        p = int(round(price))
+        if p <= 2:
+            return 1
+        if p >= 98:
+            return 99
+        return 5 * round(p / 5)
+    
+    key = normalize_price_key(price)
+    hundreds_fee = (fees_per100[key] * hundred_contracts) / 100.0
+    singles_fee = math.ceil(
+        0.07 * single_contracts * order.limit_price_dollars * (1 - order.limit_price_dollars) * 100
+    ) / 100.0
+    print(f"singles fee: {singles_fee:.4f}")
+    fees = hundreds_fee + singles_fee
+    return fees
 
 
 if __name__=="__main__":
-    driver = Analysis()
-    driver.run()
+    # driver = Analysis()
+    # driver.run()
+    # order = MarketOrder("test", "yes", 1001, 0.13)
+    # cost = order.count*order.limit_price_dollars
+    # fees = compute_fee(order)
+    # print(f"count: {order.count} at {order.limit_price_dollars}")
+    # print(f"cost: {cost} fee: {fees} pct: {fees/cost * 100}%")
+
 

@@ -1,0 +1,13 @@
+Current prediction markets only differ from the Equities Market in these areas:
+1. Order of magnitudes more liquidity and capital exists in the equities market.
+2. There is no pre-determined (or identifiable) end time. In prediction markets, this is when the event 'ends'
+- The caveat here would be US style options, but we will abstain from derivative markets for now.
+
+This indicates that traditional trading strategies should be effective in prediction markets; i.e. 
+simple moving averages, chart analysis, at face value.
+
+Identifiable features:
+1. Market becomes overbought or oversold (whether at the start, or during high volatility periods)
+2. Buy and hold strategy (yes on the favorite side), akin to investing in ETFs, is the strategy to beat! Currently, this is a profitable strategy on prediction markets (albeit with a stop-loss and profit taking limit)
+3. There always exists a mean, and mean reversion opportunities throughout the lifetime of a sports prediction market. Teams revert if they are hot, and go hot if they start cold.
+4. ESPN's statscore is faster than Kalshi's statscore --> This is a guaranteed method but not likely. This was a visual observation throughout a single game.

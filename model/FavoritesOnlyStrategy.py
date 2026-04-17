@@ -11,7 +11,7 @@ class FavoritesOnlyStrategy(BaseStrategy):
         self.balance_fraction = 0.05
         self.max_contract_price_to_exit = 0.97
         self.buy_price = 0
-        self.stop_loss = 0.9
+        self.stop_loss = 0.5
         self.strategy_state = strategy_state
         # no stop loss with favorites: Balance after exit: 1228.3900000000026
         # 50% stop loss: Balance after exit: 2006.3600000000001
@@ -27,8 +27,14 @@ class FavoritesOnlyStrategy(BaseStrategy):
             return
         
         if not self.strategy_state.in_position:
-            budget = self.trader.get_balance() * self.balance_fraction
-            self.strategy_state.contract_count = max(1, math.floor(budget / current_market_state.live_ask))
+            # budget = self.trader.get_balance() * self.balance_fraction
+            budget = 50
+            # self.strategy_state.contract_count = max(1, math.floor(budget / current_market_state.live_ask))
+            base_count = 0
+            base_count = max(1, math.floor(budget / current_market_state.live_ask))
+            # if(current_market_state.live_ask <= 0.5):
+            base_count = max(100, round(base_count / 100) * 100)
+            self.strategy_state.contract_count = base_count
             self.buy_price = current_market_state.live_ask
             order = MarketOrder(
                 ticker="simulated",
